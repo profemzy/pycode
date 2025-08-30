@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain.prompts import PromptTemplate
-
+from langchain_core.runnables import RunnableLambda
 from llm_factory import get_llm, get_llm_async
 
 load_dotenv()
@@ -76,23 +76,31 @@ async def main_async():
             template="Write a very short {language} function that will {task}"
         )
 
-        code_chain = code_prompt | llm
+        test_prompt = PromptTemplate(
+            input_variables=["code", "language"],
+            template="Write a test for the following {language} code {code}"
+        )
+        
+        def extract_code(result):
+            return {"code": result.content, "language": args.language}
+        
+        # Create a combined chain that flows code -> test
+        combined_chain = (
+            code_prompt | llm | RunnableLambda(extract_code) | test_prompt | llm
+        )
 
-        print(f"Prompt: {code_prompt}")
+        print(f"Code Prompt: {code_prompt}")
         print("-" * 55)
 
-        result = await code_chain.ainvoke(
+        final_result = await combined_chain.ainvoke(
             {
                 "language": args.language,
                 "task": args.task
-             }
+            }
         )
-        print("Response:")
-        if result.content:
-            print(result.content)
-        else:
-            print("Response is empty")
-            print(f"Result object: {result}")
+        
+        print("Test Response:")
+        print(final_result.content)
 
     except ValueError as ve:
         print(f"Configuration error: {ve}")
