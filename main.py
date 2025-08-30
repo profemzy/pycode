@@ -41,7 +41,8 @@ def main():
 
         code_chain = code_prompt | llm
 
-        print(f"Prompt: {code_prompt}")
+        formatted_prompt = code_prompt.format(language=args.language, task=args.task)
+        print(f"Actual Prompt: {formatted_prompt}")
         print("-" * 50)
         result = code_chain.invoke(
             {
@@ -89,7 +90,8 @@ async def main_async():
             code_prompt | llm | RunnableLambda(extract_code) | test_prompt | llm
         )
 
-        print(f"Code Prompt: {code_prompt}")
+        formatted_code_prompt = code_prompt.format(language=args.language, task=args.task)
+        print(f"Actual Code Prompt: {formatted_code_prompt}")
         print("-" * 55)
 
         final_result = await combined_chain.ainvoke(
