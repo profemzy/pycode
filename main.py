@@ -1,13 +1,20 @@
 import asyncio
 import logging
+import argparse
 from typing import Optional
 
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain.prompts import PromptTemplate
 
 from llm_factory import get_llm, get_llm_async
 
 load_dotenv()
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--task", default="return a list of numbers")
+parser.add_argument("--language", default="python")
+args = parser.parse_args()
 
 
 def create_llm_client(model: Optional[str] = None) -> BaseChatModel:
@@ -27,10 +34,21 @@ def main():
     """Main function to demonstrate LLM usage with proper error handling."""
     try:
         llm = create_llm_client()
-        prompt = "What are Large Language Models?"
-        print(f"Prompt: {prompt}")
+        code_prompt = PromptTemplate.from_template(
+            input_variables=["language", "task"],
+            template="Write a very short {language} function that will {task}"
+        )
+
+        code_chain = code_prompt | llm
+
+        print(f"Prompt: {code_prompt}")
         print("-" * 50)
-        result = llm.invoke(prompt)
+        result = code_chain.invoke(
+            {
+                "language": args.language,
+                "task": args.task
+             }
+        )
         print("Response:")
         if result.content:
             print(result.content)
@@ -53,11 +71,22 @@ async def main_async():
     try:
         llm = await get_llm_async()
 
-        prompt = "Explain the benefits of asynchronous programming."
-        print(f"Prompt: {prompt}")
+        code_prompt = PromptTemplate(
+            input_variables=["language", "task"],
+            template="Write a very short {language} function that will {task}"
+        )
+
+        code_chain = code_prompt | llm
+
+        print(f"Prompt: {code_prompt}")
         print("-" * 55)
 
-        result = await llm.ainvoke(prompt)
+        result = await code_chain.ainvoke(
+            {
+                "language": args.language,
+                "task": args.task
+             }
+        )
         print("Response:")
         if result.content:
             print(result.content)
@@ -75,6 +104,7 @@ async def main_async():
 
 if __name__ == "__main__":
     import sys
+
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     if "--sync-only" in sys.argv:
