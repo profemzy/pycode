@@ -1,0 +1,115 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Credentials and sensitive files
+*.key
+*.pem
+*.p12
+*.p8
+*.crt
+*.cer
+*.pfx
+secrets/
+credentials/
+keys/
+certs/
+.secrets
+.credentials
+config.json
+secrets.json
+credentials.json
+service-account.json
+*-key.json
+*_key.json
+*-credentials.json
+*_credentials.json
+*.config
+
+# API keys and tokens (common patterns)
+*api_key*
+*secret*
+*token*
+*password*
+*pwd*
+auth.txt
+api.txt
+
+# Database files with potential sensitive data
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs (may contain sensitive information)
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Claude Code specific
+CLAUDE.md

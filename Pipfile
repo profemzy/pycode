@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+langchain = "==0.3.27"
+langchain-openai = "==0.3.32"
+python-dotenv = "==1.1.1"
+
+[dev-packages]
+flake8 = "*"
+
+[requires]
+python_version = "3.12"
+python_full_version = "3.12.2"
