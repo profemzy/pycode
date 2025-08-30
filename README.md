@@ -36,9 +36,9 @@ pip install flake8  # For development/linting
 
 1. **Set up your environment variables:**
 ```bash
-# Create .env file
-echo "OPENAI_API_KEY=your_api_key_here" > .env
-echo "OPENAI_API_BASE=your_base_url_here" >> .env  # Optional
+# Copy the example file and edit it
+cp .env.example .env
+# Edit .env with your actual API keys and configuration
 ```
 
 2. **Basic usage:**
@@ -264,23 +264,41 @@ logging.basicConfig(level=logging.DEBUG)
 # Now you'll see detailed logs about temperature adjustments and API calls
 ```
 
+## 🔐 Security
+
+This project includes comprehensive security measures:
+
+### Credential Protection
+- `.env` files are automatically git-ignored
+- `.env.example` provides a template with placeholder values
+- `.gitignore` includes patterns for common credential files
+- No hardcoded API keys or secrets
+
+### Best Practices
+```bash
+# ✅ Good: Use environment variables
+OPENAI_API_KEY=your_actual_key
+
+# ❌ Bad: Never hardcode in source code
+api_key = "sk-proj-abc123"  # Don't do this!
+```
+
 ## 🧪 Testing
 
 Run the included example:
 ```bash
+# Default: runs async version (production-optimal)
 python main.py
+
+# Run synchronous version for debugging
+python main.py --sync-only
 ```
 
-Expected output:
+Expected output (default async):
 ```
-=== Synchronous LLM Demo ===
-Prompt: What are Large Language Models?
---------------------------------------------------
-[LLM Response Here]
-
 === Asynchronous LLM Demo ===
 Prompt: Explain the benefits of asynchronous programming.
---------------------------------------------------
+-------------------------------------------------------
 [LLM Response Here]
 ```
 
@@ -297,14 +315,16 @@ pipenv install --dev flake8
 
 ### Project Structure
 ```
-├── main.py                    # Example usage and entry point
+├── main.py                    # Example usage and entry point (async-first)
 ├── llm_factory/              # Core library package
 │   ├── __init__.py          # Package exports
 │   ├── config.py            # Configuration management
 │   └── factory.py           # Factory functions
 ├── Pipfile                   # Dependencies
 ├── Pipfile.lock             # Dependency lock file
-├── .env                      # Environment variables (create this)
+├── .env.example              # Environment template (commit to version control)
+├── .env                      # Your actual environment variables (git ignored)
+├── .gitignore               # Git ignore file with security patterns
 └── README.md                # This file
 ```
 
