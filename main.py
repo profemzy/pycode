@@ -1,126 +1,130 @@
-import asyncio
 import logging
-import argparse
-from typing import Optional
+from typing import TypedDict, Annotated, Sequence
 
 from dotenv import load_dotenv
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain.prompts import PromptTemplate
-from langchain_core.runnables import RunnableLambda
-from llm_factory import get_llm, get_llm_async
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+
+from llm_factory import get_llm
 
 load_dotenv()
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--task", default="return a list of numbers")
-parser.add_argument("--language", default="python")
-args = parser.parse_args()
+
+class ChatState(TypedDict):
+    """State for the chatbot conversation."""
+    messages: Annotated[Sequence[BaseMessage], add_messages]
 
 
-def create_llm_client(model: Optional[str] = None) -> BaseChatModel:
-    """Create and return an LLM client with an optional model override."""
+def chatbot_node(state: ChatState) -> dict:
+    """Process messages through the LLM and return updated state."""
     try:
-        llm = get_llm(model)
-        return llm
-    except ValueError as e:
-        logging.error(f"Configuration error initializing LLM client: {e}")
-        raise
+        llm = get_llm()
+        # Get response from LLM
+        response = llm.invoke(state["messages"])
+        return {"messages": [response]}
     except Exception as e:
-        logging.error(f"Unexpected error initializing LLM client: {e}")
+        logging.error(f"Error in chatbot_node: {e}")
+        error_message = AIMessage(content=f"I encountered an error: {str(e)}")
+        return {"messages": [error_message]}
+
+
+def create_workflow() -> StateGraph:
+    """Create and configure the LangGraph workflow."""
+    workflow = StateGraph(ChatState)  # type: ignore
+    workflow.add_node("chatbot", chatbot_node)
+    workflow.set_entry_point("chatbot")
+    workflow.add_edge("chatbot", END)
+    return workflow
+
+
+def run_chatbot():
+    """Main chatbot execution function."""
+    try:
+        # Create and compile the workflow
+        workflow = create_workflow()
+        checkpointer = MemorySaver()
+        app = workflow.compile(checkpointer=checkpointer)
+
+        # Configuration for conversation persistence
+        config = {"configurable": {"thread_id": "main-conversation"}}
+
+        print("🤖 LangGraph Chatbot initialized!")
+        print("Type 'quit', 'exit', or 'bye' to end the conversation.")
+        print("-" * 50)
+
+        while True:
+            try:
+                # Get user input
+                user_input = input("\n👤 You: ").strip()
+
+                # Check for exit commands
+                if user_input.lower() in ['quit', 'exit', 'bye', 'q']:
+                    print("👋 Goodbye!")
+                    break
+
+                if not user_input:
+                    continue
+
+                # Create human message
+                human_message = HumanMessage(content=user_input)
+
+                # Process through the graph
+                print("🤖 Assistant: ", end="", flush=True)
+
+                result = app.invoke(
+                    {"messages": [human_message]}, config=config) # type: ignore
+
+                # Get and display the AI response
+                if result["messages"]:
+                    ai_response = result["messages"][-1]
+                    print(ai_response.content)
+                else:
+                    print("No response received.")
+
+            except KeyboardInterrupt:
+                print("\n\n👋 Chat interrupted by user. Goodbye!")
+                break
+            except EOFError:
+                print("\n\n👋 Input ended. Goodbye!")
+                break
+            except Exception as e:
+                logging.error(f"Error in conversation loop: {e}")
+                print(f"❌ An error occurred: {e}")
+                print("Please try again or type 'quit' to exit.")
+
+    except Exception as e:
+        logging.error(f"Failed to initialize chatbot: {e}")
+        print(f"❌ Failed to start chatbot: {e}")
         raise
 
 
 def main():
-    """Main function to demonstrate LLM usage with proper error handling."""
+    """Main function."""
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+
+    # Suppress verbose HTTP logs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+
     try:
-        llm = create_llm_client()
-        code_prompt = PromptTemplate.from_template(
-            input_variables=["language", "task"],
-            template="Write a very short {language} function that will {task}"
-        )
-
-        code_chain = code_prompt | llm
-
-        formatted_prompt = code_prompt.format(language=args.language, task=args.task)
-        print(f"Actual Prompt: {formatted_prompt}")
-        print("-" * 50)
-        result = code_chain.invoke(
-            {
-                "language": args.language,
-                "task": args.task
-             }
-        )
-        print("Response:")
-        if result.content:
-            print(result.content)
-        else:
-            print("Response is empty")
-            print(f"Result object: {result}")
-            print(f"Result type: {type(result)}")
-            print(f"Available attributes: {dir(result)}")
+        run_chatbot()
 
     except ValueError as ve:
-        print(f"Configuration error: {ve}")
-        print("Please check your .env file and ensure OPENAI_API_KEY is set.")
+        print(f"❌ Configuration error: {ve}")
+        print("Please check your .env file and ensure API keys are properly set.")
+        logging.error(f"Configuration error: {ve}")
+
     except Exception as e:
-        print(f"An error occurred: {e}")
-        logging.error(f"Unexpected error: {e}")
-
-
-async def main_async():
-    """Async version of the main function demonstrating LLM usage."""
-    try:
-        llm = await get_llm_async()
-
-        code_prompt = PromptTemplate(
-            input_variables=["language", "task"],
-            template="Write a very short {language} function that will {task}"
-        )
-
-        test_prompt = PromptTemplate(
-            input_variables=["code", "language"],
-            template="Write a test for the following {language} code {code}"
-        )
-        
-        def extract_code(result):
-            return {"code": result.content, "language": args.language}
-        
-        # Create a combined chain that flows code -> test
-        combined_chain = (
-            code_prompt | llm | RunnableLambda(extract_code) | test_prompt | llm
-        )
-
-        formatted_code_prompt = code_prompt.format(language=args.language, task=args.task)
-        print(f"Actual Code Prompt: {formatted_code_prompt}")
-        print("-" * 55)
-
-        final_result = await combined_chain.ainvoke(
-            {
-                "language": args.language,
-                "task": args.task
-            }
-        )
-        
-        print("Test Response:")
-        print(final_result.content)
-
-    except ValueError as ve:
-        print(f"Configuration error: {ve}")
-        print("Please check your .env file and ensure OPENAI_API_KEY is set.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"❌ Unexpected error: {e}")
         logging.error(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":
-    import sys
-
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-
-    if "--sync-only" in sys.argv:
-        print("=== Synchronous LLM Demo ===")
-        main()
-    else:
-        # Default: async-only (optimal for production)
-        print("=== Asynchronous LLM Demo ===")
-        asyncio.run(main_async())
+    print("=== LangGraph Chatbot ===")
+    main()
