@@ -30,10 +30,33 @@ def chatbot_node(state: ChatState) -> dict:
         return {"messages": [error_message]}
 
 
-def create_workflow() -> StateGraph:
+def chatbot_streaming_node(state: ChatState) -> dict:
+    """Process messages through the LLM with streaming support."""
+    try:
+        llm = get_llm()
+        # Stream response from LLM
+        full_content = ""
+        for chunk in llm.stream(state["messages"]):
+            if hasattr(chunk, 'content') and chunk.content:
+                full_content += chunk.content
+                print(chunk.content, end="", flush=True)
+        
+        # Create the final AI message with complete content
+        response = AIMessage(content=full_content)
+        return {"messages": [response]}
+    except Exception as e:
+        logging.error(f"Error in chatbot_streaming_node: {e}")
+        error_message = AIMessage(content=f"I encountered an error: {str(e)}")
+        return {"messages": [error_message]}
+
+
+def create_workflow(streaming: bool = True) -> StateGraph:
     """Create and configure the LangGraph workflow."""
     workflow = StateGraph(ChatState)  # type: ignore
-    workflow.add_node("chatbot", chatbot_node)
+    if streaming:
+        workflow.add_node("chatbot", chatbot_streaming_node)
+    else:
+        workflow.add_node("chatbot", chatbot_node)
     workflow.set_entry_point("chatbot")
     workflow.add_edge("chatbot", END)
     return workflow
@@ -73,15 +96,11 @@ def run_chatbot():
                 # Process through the graph
                 print("🤖 Assistant: ", end="", flush=True)
 
-                result = app.invoke(
+                app.invoke(
                     {"messages": [human_message]}, config=config) # type: ignore
-
-                # Get and display the AI response
-                if result["messages"]:
-                    ai_response = result["messages"][-1]
-                    print(ai_response.content)
-                else:
-                    print("No response received.")
+                
+                # Add newline after streaming is complete
+                print()
 
             except KeyboardInterrupt:
                 print("\n\n👋 Chat interrupted by user. Goodbye!")
