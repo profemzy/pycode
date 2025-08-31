@@ -8,9 +8,20 @@ langchain = "==0.3.27"
 langchain-openai = "==0.3.32"
 langgraph = "==0.6.6"
 python-dotenv = "==1.1.1"
+langchain-community = "==0.3.29"
+duckduckgo-search = "==8.1.1"
+langchain-tavily = "==0.2.11"
+psutil = "==6.1.0"
 
 [dev-packages]
 flake8 = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-mock = "*"
+pytest-cov = "*"
+coverage = "*"
+black = "*"
+mypy = "*"
 
 [requires]
 python_version = "3.12"
